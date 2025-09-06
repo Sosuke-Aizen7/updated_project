@@ -29,6 +29,7 @@ def submissions(request):
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def register_user(request):
+    print(f"Register request data: {request.data}")
     serializer = UserRegistrationSerializer(data=request.data)
     if serializer.is_valid():
         user = serializer.save()
@@ -38,6 +39,7 @@ def register_user(request):
             'access': str(refresh.access_token),
             'user': UserSerializer(user).data
         }, status=status.HTTP_201_CREATED)
+    print(f"Registration errors: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
@@ -208,3 +210,15 @@ def user_saved_courses(request):
             return Response({'message': 'Course removed from saved list'}, status=status.HTTP_200_OK)
         except UserSavedCourse.DoesNotExist:
             return Response({'error': 'Saved course not found'}, status=status.HTTP_404_NOT_FOUND)
+
+# Admin view to list all users
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def list_users(request):
+    # Check if user is admin
+    if not request.user.profile.role == 'admin':
+        return Response({'error': 'Only admins can access user list'}, status=status.HTTP_403_FORBIDDEN)
+    
+    users = User.objects.all()
+    serializer = UserSerializer(users, many=True)
+    return Response(serializer.data)

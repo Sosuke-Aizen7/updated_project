@@ -14,11 +14,18 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=True)
+    role = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile', 'role']
         extra_kwargs = {'password': {'write_only': True}}
+    
+    def get_role(self, obj):
+        try:
+            return obj.userprofile.role
+        except:
+            return 'student'  # Default role
     
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -56,9 +63,19 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         if 'profile' in validated_data:
             validated_data.pop('profile')
         
+        # Extract role and fields for User model
         role = validated_data.pop('role', 'student')
+        
+        # Create user without using User.objects.create directly
+        # because we need to handle password hashing
         user = User.objects.create_user(**validated_data)
+        
+        # Create user profile with the role
         UserProfile.objects.create(user=user, role=role)
+        
+        # Print confirmation for debugging
+        print(f"Created user {user.username} with role {role}")
+        
         return user
 
 class CourseSerializer(serializers.ModelSerializer):

@@ -60,13 +60,21 @@ const AdminDashboard = () => {
           });
           setCourses(response.data);
         }
-        // For a real application, you would need to add an admin-only endpoint to fetch users
+        // Fetch real users from our new endpoint
         else if (activeTab === 'users') {
-          // Placeholder for fetching users
-          setUsers([
-            { id: 1, username: 'student1', email: 'student1@example.com', role: 'student' },
-            { id: 2, username: 'admin', email: 'admin@example.com', role: 'admin' },
-          ]);
+          try {
+            const response = await axios.get(`${API_URL}/api/users/`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            setUsers(response.data);
+          } catch (error) {
+            console.error('Error fetching users:', error);
+            // Fallback to mock data if endpoint not available yet
+            setUsers([
+              { id: 1, username: 'student1', email: 'student1@example.com', role: 'student' },
+              { id: 2, username: 'admin', email: 'admin@example.com', role: 'admin' },
+            ]);
+          }
         }
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -114,19 +122,31 @@ const AdminDashboard = () => {
         setCourses([...courses, response.data]);
       }
       else if (activeTab === 'users') {
-        const response = await axios.post(`${API_URL}/api/auth/register/`, {
-          ...formData,
-          // Make sure the profile role is included
-          profile: { role: formData.role }
-        }, {
+        // For user creation, we'll use the register endpoint directly
+        const userData = {
+          username: formData.username,
+          email: formData.email,
+          password: formData.password,
+          password_confirm: formData.password, // Make sure passwords match
+          role: formData.role, // Pass the role directly
+          profile: {
+            role: formData.role // Also include it in profile for backend processing
+          }
+        };
+        
+        console.log('Sending user data:', userData);
+        
+        const response = await axios.post(`${API_URL}/api/auth/register/`, userData, {
           headers: { 
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
+        
         // If we get back user data, add it to our list
-        if (response.data && response.data.id) {
-          setUsers([...users, response.data]);
+        if (response.data && response.data.user) {
+          const newUser = response.data.user;
+          setUsers([...users, newUser]);
         }
       }
       
@@ -140,7 +160,7 @@ const AdminDashboard = () => {
       
     } catch (err) {
       console.error('Error submitting form:', err);
-      setError('Could not save data. Please check your inputs and try again.');
+      setError(`Could not save data: ${err.response?.data?.error || err.message}`);
     }
   };
 

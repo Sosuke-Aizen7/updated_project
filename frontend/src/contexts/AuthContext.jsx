@@ -141,7 +141,7 @@ export const AuthProvider = ({ children }) => {
     logout,
     refreshToken,
     isAuthenticated: !!user,
-    isAdmin: user?.profile?.role === 'admin'
+    isAdmin: user?.profile?.role === 'admin' || user?.is_superuser === true
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
