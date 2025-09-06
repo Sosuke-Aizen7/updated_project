@@ -19,6 +19,15 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['id', 'username', 'email', 'first_name', 'last_name', 'profile']
         extra_kwargs = {'password': {'write_only': True}}
+    
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        print(f"User representation: {representation}")
+        # Make sure profile is included
+        if not representation.get('profile') and hasattr(instance, 'userprofile'):
+            representation['profile'] = UserProfileSerializer(instance.userprofile).data
+            print(f"Added profile: {representation['profile']}")
+        return representation
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password_confirm = serializers.CharField(write_only=True)

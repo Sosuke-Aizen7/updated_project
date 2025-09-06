@@ -46,20 +46,28 @@ def login_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
     
+    print(f"Login attempt: {username}")
+    
     user = authenticate(username=username, password=password)
     if user:
+        print(f"User authenticated: {user.username}")
         refresh = RefreshToken.for_user(user)
+        user_data = UserSerializer(user).data
+        print(f"User data: {user_data}")
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'user': UserSerializer(user).data
+            'user': user_data
         })
+    print(f"Authentication failed for user: {username}")
     return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_user_profile(request):
+    print(f"Getting user profile for: {request.user.username}")
     serializer = UserSerializer(request.user)
+    print(f"User profile data: {serializer.data}")
     return Response(serializer.data)
 
 # University and Course views

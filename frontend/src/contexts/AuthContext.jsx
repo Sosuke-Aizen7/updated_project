@@ -60,10 +60,15 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
+      console.log('Attempting login with:', { username, password });
+      console.log('API URL:', `${API_URL}/api/auth/login/`);
+      
       const response = await axios.post(`${API_URL}/api/auth/login/`, {
         username,
         password
       });
+
+      console.log('Login response:', response.data);
 
       const { access, refresh, user } = response.data;
       
@@ -74,6 +79,8 @@ export const AuthProvider = ({ children }) => {
       return { success: true, user };
     } catch (error) {
       console.error('Login error:', error);
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
       return { 
         success: false, 
         message: error.response?.data?.error || 'Login failed. Please check your credentials.' 
