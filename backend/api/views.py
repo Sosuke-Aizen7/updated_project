@@ -71,53 +71,111 @@ def get_user_profile(request):
     return Response(serializer.data)
 
 # University and Course views
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def list_universities(request):
-    universities = University.objects.all()
-    serializer = UniversitySerializer(universities, many=True)
-    return Response(serializer.data)
+    if request.method == 'GET':
+        universities = University.objects.all()
+        serializer = UniversitySerializer(universities, many=True)
+        return Response(serializer.data)
+    
+    elif request.method == 'POST':
+        # Check if the user is admin
+        if not request.user.is_authenticated or not request.user.profile.role == 'admin':
+            return Response({'error': 'Only admins can create universities'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = UniversitySerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def university_detail(request, pk):
     try:
         university = University.objects.get(pk=pk)
-        serializer = UniversitySerializer(university)
-        return Response(serializer.data)
     except University.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    if request.method == 'GET':
+        serializer = UniversitySerializer(university)
+        return Response(serializer.data)
+    
+    # Check if user is admin for modifying operations
+    if not request.user.is_authenticated or not request.user.profile.role == 'admin':
+        return Response({'error': 'Only admins can modify universities'}, status=status.HTTP_403_FORBIDDEN)
+    
+    if request.method == 'PUT':
+        serializer = UniversitySerializer(university, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        university.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
-@api_view(['GET'])
+@api_view(['GET', 'POST'])
 def list_courses(request):
-    query = request.query_params.get('query', '')
-    university_id = request.query_params.get('university', None)
-    level = request.query_params.get('level', None)
-    
-    courses = Course.objects.all()
-    
-    if query:
-        courses = courses.filter(
-            Q(name__icontains=query) | 
-            Q(description__icontains=query) |
-            Q(university__name__icontains=query)
-        )
-    
-    if university_id:
-        courses = courses.filter(university__id=university_id)
+    if request.method == 'GET':
+        query = request.query_params.get('query', '')
+        university_id = request.query_params.get('university', None)
+        level = request.query_params.get('level', None)
         
-    if level:
-        courses = courses.filter(level=level)
+        courses = Course.objects.all()
+        
+        if query:
+            courses = courses.filter(
+                Q(name__icontains=query) | 
+                Q(description__icontains=query) |
+                Q(university__name__icontains=query)
+            )
+        
+        if university_id:
+            courses = courses.filter(university__id=university_id)
+            
+        if level:
+            courses = courses.filter(level=level)
+        
+        serializer = CourseSerializer(courses, many=True)
+        return Response(serializer.data)
     
-    serializer = CourseSerializer(courses, many=True)
-    return Response(serializer.data)
+    elif request.method == 'POST':
+        # Check if the user is admin
+        if not request.user.is_authenticated or not request.user.profile.role == 'admin':
+            return Response({'error': 'Only admins can create courses'}, status=status.HTTP_403_FORBIDDEN)
+        
+        serializer = CourseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['GET'])
+@api_view(['GET', 'PUT', 'DELETE'])
 def course_detail(request, pk):
     try:
         course = Course.objects.get(pk=pk)
-        serializer = CourseSerializer(course)
-        return Response(serializer.data)
     except Course.DoesNotExist:
         return Response(status=status.HTTP_404_NOT_FOUND)
+        
+    if request.method == 'GET':
+        serializer = CourseSerializer(course)
+        return Response(serializer.data)
+    
+    # Check if user is admin for modifying operations
+    if not request.user.is_authenticated or not request.user.profile.role == 'admin':
+        return Response({'error': 'Only admins can modify courses'}, status=status.HTTP_403_FORBIDDEN)
+    
+    if request.method == 'PUT':
+        serializer = CourseSerializer(course, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    elif request.method == 'DELETE':
+        course.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 # User saved courses
 @api_view(['GET', 'POST', 'DELETE'])

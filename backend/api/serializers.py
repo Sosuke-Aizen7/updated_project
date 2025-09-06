@@ -30,20 +30,32 @@ class UserSerializer(serializers.ModelSerializer):
         return representation
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
-    password_confirm = serializers.CharField(write_only=True)
+    password_confirm = serializers.CharField(write_only=True, required=False)
     role = serializers.CharField(write_only=True, required=False, default='student')
+    profile = serializers.DictField(write_only=True, required=False)
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role']
+        fields = ['username', 'email', 'password', 'password_confirm', 'first_name', 'last_name', 'role', 'profile']
         extra_kwargs = {'password': {'write_only': True}}
     
     def validate(self, data):
-        if data['password'] != data.pop('password_confirm'):
+        # For admin-created users, we might not have password_confirm
+        if 'password_confirm' in data and data['password'] != data.pop('password_confirm'):
             raise serializers.ValidationError("Passwords do not match!")
+        
+        # Check if profile data is provided (for admin creating users)
+        if 'profile' in data and 'role' in data['profile']:
+            # Use the role from profile
+            data['role'] = data['profile']['role']
+        
         return data
     
     def create(self, validated_data):
+        # Remove profile dict if it exists
+        if 'profile' in validated_data:
+            validated_data.pop('profile')
+        
         role = validated_data.pop('role', 'student')
         user = User.objects.create_user(**validated_data)
         UserProfile.objects.create(user=user, role=role)
